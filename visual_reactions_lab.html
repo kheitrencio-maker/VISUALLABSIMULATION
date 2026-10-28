@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visual Reactions Lab - Chemical Types & Molecular Mechanics</title>
+<style>
+:root{
+  --board:#0f172a; --ink:#0f172a; --paper:#f8fafc; --sun:#f59e0b;
+  --tang:#ea580c; --aqua:#14b8a6; --coral:#ef4444; --grape:#8b5cf6;
+  --sky:#0284c7; --lime:#10b981; --pink:#ec4899;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; font-size:clamp(14px,.5vw + 9px,19px)}
+body{
+  margin:0; min-height:100vh; color:var(--ink); line-height:1.45;
+  font-family:"Trebuchet MS", "Avenir Next", system-ui, sans-serif;
+  background:var(--board) radial-gradient(rgba(255,255,255,.09) 2px,transparent 2.5px) 0 0/28px 28px;
+  padding-bottom:90px;
+}
+body::after{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:50;
+  box-shadow:inset 0 0 0 8px #1e293b, inset 0 0 0 12px #0f172a;
+}
+h1,h2,h3{font-family:"Rockwell", "Roboto Slab", Georgia, serif; font-weight:800; line-height:1.1; margin:0 0 0.4em}
+h1{font-size:2.2rem; color:var(--sun)}
+h2{font-size:1.5rem}
+
+/* Visual Top Navigation */
+nav{
+  position:sticky; top:0; z-index:40; display:flex; gap:8px; overflow-x:auto; white-space:nowrap;
+  padding:12px 20px; background:#020617; border-bottom:4px solid var(--sun);
+  box-shadow:0 6px 20px rgba(0,0,0,0.4);
+}
+nav button{
+  flex:none; color:#fff; font-weight:bold; padding:8px 18px; border-radius:99px;
+  background:rgba(255,255,255,0.12); border:none; cursor:pointer; font-family:inherit;
+  font-size:0.95rem; transition:all 0.2s ease; display:inline-flex; align-items:center; gap:6px;
+}
+nav button:hover{background:var(--tang); transform:translateY(-1px)}
+nav button.active{
+  background:var(--coral); box-shadow:0 0 14px rgba(239,68,68,0.7); transform:scale(1.03);
+}
+
+/* Layout & Cards */
+.tab-content{display:none; padding:20px 3vw 40px; max-width:1400px; margin:0 auto}
+.tab-content.active{display:grid; grid-template-columns:repeat(12,1fr); gap:22px; animation:popIn 0.3s ease-out}
+@keyframes popIn{from{opacity:0; transform:scale(0.98)} to{opacity:1; transform:scale(1)}}
+
+.card{
+  position:relative; background:var(--paper); border-radius:14px; padding:22px;
+  box-shadow:0 8px 0 rgba(0,0,0,0.3); border:3px solid var(--ink);
+}
+.card::before{
+  content:""; position:absolute; top:-12px; left:50%; width:100px; height:24px; margin-left:-50px;
+  background:var(--tape,rgba(245,158,11,0.9)); transform:rotate(-2deg); box-shadow:0 2px 3px rgba(0,0,0,0.2);
+  border-radius:3px;
+}
+.s4{grid-column:span 4} .s5{grid-column:span 5} .s6{grid-column:span 6} .s7{grid-column:span 7} .s8{grid-column:span 8} .s12{grid-column:span 12}
+.c1{background:#fef3c7} .c2{background:#ccfbf1; --tape:rgba(239,68,68,.9)} 
+.c3{background:#fee2e2; --tape:rgba(20,184,166,.9)} .c4{background:#f3e8ff; --tape:rgba(245,158,11,.9)} 
+.c5{background:#e0f2fe; --tape:rgba(139,92,246,.9)}
+
+@media(max-width:960px){.s4,.s5,.s6,.s7,.s8{grid-column:span 12}}
+
+/* Buttons with Tactile Press */
+button, select{font:inherit; color:inherit}
+.btn{
+  cursor:pointer; border:2px solid var(--ink); border-radius:12px; padding:10px 18px; font-weight:800;
+  color:#fff; background:var(--ink); box-shadow:0 4px 0 var(--ink); margin:4px 6px 8px 0;
+  display:inline-flex; align-items:center; gap:6px; transition:all 0.1s;
+}
+.btn:active{transform:translateY(3px); box-shadow:0 1px 0 var(--ink)}
+.btn.go{background:#059669} .btn.hot{background:#ea580c} .btn.sky{background:#0284c7} .btn.purple{background:#8b5cf6}
+
+/* Graphic Reaction Equation Banner */
+.gfx-eq{
+  display:flex; align-items:center; justify-content:space-around; gap:10px; flex-wrap:wrap;
+  background:#fff; border:3px solid var(--ink); border-radius:16px; padding:16px; margin-bottom:14px;
+  box-shadow:inset 0 0 10px rgba(0,0,0,0.04);
+}
+.eq-card{
+  display:flex; flex-direction:column; align-items:center; justify-center:center;
+  background:var(--paper); border:2px solid var(--ink); border-radius:12px; padding:10px 16px; min-width:130px;
+  box-shadow:0 4px 0 rgba(0,0,0,0.1); text-align:center;
+}
+.eq-card .sub-tag{font-size:0.75rem; font-weight:bold; color:#64748b; margin-top:4px}
+.eq-sign{font-size:1.8rem; font-weight:900; color:var(--tang)}
+
+/* Visual Stage Simulation Canvas */
+.visual-stage{
+  position:relative; width:100%; height:290px; background:#020617; border:3px solid var(--ink);
+  border-radius:16px; overflow:hidden; box-shadow:inset 0 0 24px rgba(0,0,0,0.7);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+.stage-canvas{width:100%; height:100%; display:block}
+.stage-overlay{
+  position:absolute; bottom:12px; left:12px; right:12px; background:rgba(15,23,42,0.85);
+  backdrop-filter:blur(4px); color:#fff; border-radius:10px; padding:8px 14px; font-weight:bold;
+  font-size:0.9rem; border:1px solid rgba(255,255,255,0.2); text-align:center;
+}
+
+/* Atomic Legend */
+.atom-legend{display:flex; gap:12px; flex-wrap:wrap; margin:10px 0; justify-content:center}
+.legend-item{display:flex; align-items:center; gap:6px; font-weight:bold; font-size:0.8rem}
+.dot{width:16px; height:16px; border-radius:50%; border:1.5px solid #000; box-shadow:0 2px 4px rgba(0,0,0,0.3)}
+
+/* Visual Comic Grid for Uses */
+.comic-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-top:8px}
+.comic-card{
+  background:#fff; border:2.5px solid var(--ink); border-radius:12px; padding:12px;
+  display:flex; flex-direction:column; align-items:center; text-align:center; box-shadow:0 4px 0 rgba(0,0,0,0.08);
+}
+.comic-icon{font-size:2.4rem; margin-bottom:4px; filter:drop-shadow(0 3px 2px rgba(0,0,0,0.15))}
+.comic-title{font-weight:900; font-size:0.95rem; color:var(--board)}
+.comic-desc{font-size:0.8rem; color:#475569; margin-top:2px}
+
+/* Gas Test Apparatus Visualizer */
+.gas-lab{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+.lab-tube-box{
+  background:#fff; border:3px solid var(--ink); border-radius:14px; padding:16px;
+  display:flex; flex-direction:column; align-items:center; position:relative; overflow:hidden;
+  min-height:220px; justify-content:flex-end;
+}
+.test-tube-container{
+  position:relative; width:70px; height:150px; border:3px solid var(--ink);
+  border-top:none; border-radius:0 0 35px 35px; background:rgba(248,250,252,0.5);
+  overflow:hidden; box-shadow:inset 0 0 10px rgba(0,0,0,0.05);
+}
+.splint-graphic{
+  width:10px; height:75px; background:#b45309; border-radius:3px;
+  position:absolute; top:5px; left:50%; transform:translateX(-50%);
+  transition:all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); z-index:10;
+  box-shadow:2px 2px 5px rgba(0,0,0,0.2);
+}
+.splint-flame{
+  position:absolute; top:-16px; left:-7px; width:24px; height:24px; border-radius:50% 50% 50% 50%/60% 60% 40% 40%;
+  background:radial-gradient(circle, #fef08a 20%, #f97316 60%, #ef4444 100%); display:none; animation:flicker 0.2s infinite alternate;
+  box-shadow:0 0 12px #f97316;
+}
+@keyframes flicker{to{transform:scale(1.2) rotate(4deg)}}
+.beaker-liquid{
+  position:absolute; bottom:0; width:100%; height:90px; background:rgba(224,242,254,0.7);
+  border-top:2px solid rgba(2,132,199,0.3); transition:all 0.6s ease;
+}
+.cloud-precipitate{
+  position:absolute; inset:0; background:radial-gradient(circle at 50% 60%, #ffffff 0%, #f1f5f9 70%, #e2e8f0 100%);
+  opacity:0; transition:opacity 0.6s ease; display:flex; align-items:center; justify-content:center;
+}
+.cloud-precipitate::before{
+  content:""; position:absolute; width:80%; height:70%;
+  background:radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(226,232,240,0.8) 100%);
+  border-radius:40%; filter:blur(4px); animation:floatCloud 3s ease-in-out infinite alternate;
+}
+@keyframes floatCloud{0%{transform:translateY(2px) scale(0.95)} 100%{transform:translateY(-2px) scale(1.05)}}
+
+/* Pager Bottom Floating */
+.pager{
+  position:fixed; left:50%; bottom:16px; transform:translateX(-50%); z-index:40;
+  display:flex; align-items:center; gap:12px; background:#020617; border:3px solid var(--sun);
+  border-radius:99px; padding:6px 16px; box-shadow:0 8px 24px rgba(0,0,0,0.5); max-width:calc(100vw - 32px);
+}
+.pager .btn{margin:0; padding:6px 16px; font-size:0.85rem}
+.pager .btn:disabled{opacity:0.3; cursor:not-allowed}
+#pgLabel{color:#fff; font-weight:bold; font-size:0.85rem; min-width:11em; text-align:center; white-space:nowrap}
+</style>
+</head>
+<body>
+
+<!-- VISUAL NAV -->
+<nav id="topNav">
+  <button class="nav-btn active" data-tab="tab-overview">⚡ 1. Overview</button>
+  <button class="nav-btn" data-tab="tab-decomp">🍂 2. Decomposition</button>
+  <button class="nav-btn" data-tab="tab-carb">🫧 3. Acid + Carbonate</button>
+  <button class="nav-btn" data-tab="tab-metal">🧲 4. Acid + Metal</button>
+  <button class="nav-btn" data-tab="tab-comb">🔥 5. Combustion</button>
+  <button class="nav-btn" data-tab="tab-lab">🧪 6. Visual Gas Lab</button>
+</nav>
+
+<!-- TAB 1: OVERVIEW -->
+<div id="tab-overview" class="tab-content active">
+  <section class="card c1 s12">
+    <h1>Visual Chemistry: How Reactions Work</h1>
+    <p style="font-size:1.1rem; font-weight:600">Reactions break existing bonds and snap atoms into new visual shapes!</p>
+
+    <!-- Visual Rule Diagram -->
+    <div class="gfx-eq">
+      <div class="eq-card">
+        <span style="font-size:2rem">📦</span>
+        <b>Reactants</b>
+        <span class="sub-tag">Bonds Intact</span>
+      </div>
+      <div class="eq-sign">➔ 💥 ➔</div>
+      <div class="eq-card" style="background:#fef08a">
+        <span style="font-size:2rem">✨</span>
+        <b>Free Atoms</b>
+        <span class="sub-tag">Cleavage</span>
+      </div>
+      <div class="eq-sign">➔ 🔗 ➔</div>
+      <div class="eq-card" style="background:#d1fae5">
+        <span style="font-size:2rem">🎉</span>
+        <b>Products</b>
+        <span class="sub-tag">New Bonds</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Atom Color Palette Card -->
+  <section class="card c2 s12">
+    <h2>Atomic Sphere Color Guide</h2>
+    <div class="atom-legend">
+      <div class="legend-item"><div class="dot" style="background:#1e293b"></div> Carbon (C)</div>
+      <div class="legend-item"><div class="dot" style="background:#38bdf8"></div> Hydrogen (H)</div>
+      <div class="legend-item"><div class="dot" style="background:#ef4444"></div> Oxygen (O)</div>
+      <div class="legend-item"><div class="dot" style="background:#f59e0b"></div> Calcium (Ca)</div>
+      <div class="legend-item"><div class="dot" style="background:#ec4899"></div> Sodium (Na)</div>
+      <div class="legend-item"><div class="dot" style="background:#10b981"></div> Chlorine (Cl)</div>
+      <div class="legend-item"><div class="dot" style="background:#a855f7"></div> Magnesium (Mg)</div>
+    </div>
+  </section>
+
+  <!-- 4 Categories Visual Grid -->
+  <section class="card c5 s12">
+    <h2>4 Core Chemical Reactions</h2>
+    <div class="comic-grid">
+      <div class="comic-card">
+        <div class="comic-icon">🍂</div>
+        <div class="comic-title">Decomposition</div>
+        <div class="comic-desc">1 Big Compound ➔ 2+ Simpler Molecules</div>
+      </div>
+      <div class="comic-card">
+        <div class="comic-icon">🫧</div>
+        <div class="comic-title">Acid + Carbonate</div>
+        <div class="comic-desc">Acid + Carbonate ➔ Salt + H₂O + CO₂ Gas</div>
+      </div>
+      <div class="comic-card">
+        <div class="comic-icon">🧲</div>
+        <div class="comic-title">Acid + Metal</div>
+        <div class="comic-desc">Metal + Acid ➔ Salt + H₂ Gas Bubbles</div>
+      </div>
+      <div class="comic-card">
+        <div class="comic-icon">🔥</div>
+        <div class="comic-title">Combustion</div>
+        <div class="comic-desc">Fuel + O₂ ➔ CO₂ + H₂O + Heat Burst</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- TAB 2: DECOMPOSITION -->
+<div id="tab-decomp" class="tab-content">
+  <section class="card c1 s12">
+    <h2>Decomposition: AB ➔ A + B</h2>
+    <!-- Graphical Equation Banner -->
+    <div class="gfx-eq">
+      <div class="eq-card">
+        <span style="font-size:1.3rem; font-weight:900">CaCO₃</span>
+        <span class="sub-tag">Limestone</span>
+      </div>
+      <div class="eq-sign">➔ 🔥 ➔</div>
+      <div class="eq-card">
+        <span style="font-size:1.3rem; font-weight:900">CaO</span>
+        <span class="sub-tag">Quicklime</span>
+      </div>
+      <div class="eq-sign">+</div>
+      <div class="eq-card">
+        <span style="font-size:1.3rem; font-weight:900">CO₂ ⬆</span>
+        <span class="sub-tag">Gas Released</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card c4 s7">
+    <h2>Interactive Bond-Cleavage Stage</h2>
+    <div class="visual-stage">
+      <canvas id="cvDecomp" class="stage-canvas"></canvas>
+      <div class="stage-overlay" id="txtDecomp">Press 🔥 HEAT TO BREAK BONDS to start!</div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
+      <button class="btn hot" onclick="runSim('decomp', 1)">🔥 1. Heat &amp; Break Bonds</button>
+      <button class="btn purple" onclick="runSim('decomp', 2)">✨ 2. Free Atoms</button>
+      <button class="btn go" onclick="runSim('decomp', 3)">🔗 3. Snap Products</button>
+      <button class="btn" onclick="resetSim('decomp')">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card c2 s5">
+    <h2>Visual Real-World Uses</h2>
+    <div class="comic-grid" style="grid-template-columns:1fr">
+      <div class="comic-card">
+        <div class="comic-icon">🧱</div>
+        <div class="comic-title">Cement Kilns</div>
+        <div class="comic-desc">Limestone (CaCO₃) heated in kilns forms quicklime (CaO) for concrete.</div>
+      </div>
+      <div class="comic-card">
+        <div class="comic-icon">🎂</div>
+        <div class="comic-title">Baking Cake</div>
+        <div class="comic-desc">Baking soda breaks down in oven heat, releasing CO₂ bubbles to make batter rise!</div>
+      </div>
+      <div class="comic-card">
+        <div class="comic-icon">🚗</div>
+        <div class="comic-title">Car Airbags</div>
+        <div class="comic-desc">NaN₃ decomposes into N₂ gas, inflating airbags in 30ms.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- TAB 3: ACID ON CARBONATE -->
+<div id="tab-carb" class="tab-content">
+  <section class="card c3 s12">
+    <h2>Acid + Carbonate ➔ Salt + H₂O + CO₂</h2>
+    <div class="gfx-eq">
+      <div class="eq-card">
+        <span style="font-size:1.1rem; font-weight:900">2 HCl + Na₂CO₃</span>
+        <span class="sub-tag">Acid + Soda</span>
+      </div>
+      <div class="eq-sign">➔ 🫧 ➔</div>
+      <div class="eq-card">
+        <span style="font-size:1.1rem; font-weight:900">2 NaCl</span>
+        <span class="sub-tag">Salt</span>
+      </div>
+      <div class="eq-sign">+</div>
+      <div class="eq-card">
+        <span style="font-size:1.1rem; font-weight:900">H₂O</span>
+        <span class="sub-tag">Water</span>
+      </div>
+      <div class="eq-sign">+</div>
+      <div class="eq-card">
+        <span style="font-size:1.1rem; font-weight:900">CO₂ ⬆</span>
+        <span class="sub-tag">Gas Fizz</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card c2 s7">
+    <h2>Proton Attack &amp; Gas Stage</h2>
+    <div class="visual-stage">
+      <canvas id="cvCarb" class="stage-canvas"></canvas>
+      <div class="stage-overlay" id="txtCarb">Press 🧪 MIX REACTANTS to watch ions attack!</div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
+      <button class="btn hot" onclick="runSim('carb', 1)">🧪 1. Mix Reactants</button>
+      <button class="btn purple" onclick="runSim('carb', 2)">⚡ 2. H⁺ Proton Attack</button>
+      <button class="btn go" onclick="runSim('carb', 3)">🫧 3. Evolve H₂O &amp; CO₂</button>
+      <button class="btn" onclick="resetSim('carb')">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card c5 s5">
+    <h2>Visual Real-World Uses</h2>
+    <div class="comic-grid" style="grid-template-columns:1fr">
+      <div class="comic-card">
+        <div class="comic-icon">🌋</div>
+        <div class="comic-title">Soda Volcano</div>
+        <div class="comic-desc">Vinegar + baking soda triggers explosive carbon dioxide fizzing!</div>
+      </div>
+      <div class="comic-card">
+        <div class="comic-icon">💊</div>
+        <div class="comic-title">Antacid Relief</div>
+        <div class="comic-desc">Tums (CaCO₃) neutralizes stomach acid (HCl), stopping heartburn.</div>
+      </div>
+      <div class="comic-card">
+        <div class="comic-icon">🗿</div>
+        <div class="comic-title">Statue Erosion</div>
+        <div class="comic-desc">Acid rain slowly eats away limestone monuments.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- TAB 4: ACID ON METAL -->
+<div id="tab-metal" class="tab-content">
+  <section class="card c2 s12">
+    <h2>Acid + Metal ➔ Salt + H₂ Gas</h2>
+    <div class="gfx-eq">
+      <div class="eq-card">
+        <span style="font-size:1.1rem; font-weight:900">Mg + 2 HCl</span>
+        <span class="sub-tag">Metal + Acid</span>
+      </div>
+      <div class="eq-sign">➔ ⚡ ➔</div>
+      <div class="eq-card">
+        <span style="font-size:1.1rem; font-weight:900">MgCl₂</span>
+        <span class="sub-tag">Aqueous Salt</span>
+      </div>
+      <div class="eq-sign">+</div>
+      <div class="eq-card">
+        <span style="font-size:1.1rem; font-weight:900">H₂ ⬆</span>
+        <span class="sub-tag">Hydrogen Gas</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card c3 s7">
+    <h2>Electron Swap Stage</h2>
+    <div class="visual-stage">
+      <canvas id="cvMetal" class="stage-canvas"></canvas>
+      <div class="stage-overlay" id="txtMetal">Press 🧲 DROP METAL to transfer electrons!</div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
+      <button class="btn hot" onclick="runSim('metal', 1)">🧲 1. Drop Metal</button>
+      <button class="btn purple" onclick="runSim('metal', 2)">⚡ 2. Electron Swap</button>
+      <button class="btn go" onclick="runSim('metal', 3)">💥 3. Release H₂ Gas</button>
+      <button class="btn" onclick="resetSim('metal')">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card c4 s5">
+    <h2>Visual Real-World Uses</h2>
+    <div class="comic-grid" style="grid-template-columns:1fr">
+      <div class="comic-card">
+        <div class="comic-icon">⚙️</div>
+        <div class="comic-title">Metal Etching</div>
+        <div class="comic-desc">Acid baths clean steel sheets by stripping surface oxides.</div>
+      </div>
+      <div class="comic-card">
+        <div class="comic-icon">🧪</div>
+        <div class="comic-title">H₂ Gas Lab</div>
+        <div class="comic-desc">Zinc in acid generates pure hydrogen gas for testing.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- TAB 5: COMBUSTION -->
+<div id="tab-comb" class="tab-content">
+  <section class="card c5 s12">
+    <h2>Combustion: Fuel + O₂ ➔ CO₂ + H₂O</h2>
+    <div class="gfx-eq">
+      <div class="eq-card">
+        <span style="font-size:1.1rem; font-weight:900">CH₄ + 2 O₂</span>
+        <span class="sub-tag">Methane + Oxygen</span>
+      </div>
+      <div class="eq-sign">➔ 🔥 ➔</div>
+      <div class="eq-card">
+        <span style="font-size:1.1rem; font-weight:900">CO₂</span>
+        <span class="sub-tag">Carbon Dioxide</span>
+      </div>
+      <div class="eq-sign">+</div>
+      <div class="eq-card">
+        <span style="font-size:1.1rem; font-weight:900">2 H₂O</span>
+        <span class="sub-tag">Steam</span>
+      </div>
+      <div class="eq-sign">+</div>
+      <div class="eq-card" style="background:#fef08a">
+        <span style="font-size:1.1rem; font-weight:900">Heat 💥</span>
+        <span class="sub-tag">Flame Energy</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card c1 s7">
+    <h2>Ignition &amp; Flame Burst Stage</h2>
+    <div class="visual-stage">
+      <canvas id="cvComb" class="stage-canvas"></canvas>
+      <div class="stage-overlay" id="txtComb">Press ✨ IGNITE SPARK to trigger combustion!</div>
+    </div>
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px">
+      <button class="btn hot" onclick="runSim('comb', 1)">✨ 1. Ignite Spark</button>
+      <button class="btn purple" onclick="runSim('comb', 2)">💥 2. Rapid Oxidation</button>
+      <button class="btn go" onclick="runSim('comb', 3)">🔥 3. Form CO₂ &amp; H₂O</button>
+      <button class="btn" onclick="resetSim('comb')">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card c3 s5">
+    <h2>Visual Real-World Uses</h2>
+    <div class="comic-grid" style="grid-template-columns:1fr">
+      <div class="comic-card">
+        <div class="comic-icon">🚗</div>
+        <div class="comic-title">Car Engine</div>
+        <div class="comic-desc">Gasoline combustion creates expanding hot gases that push pistons.</div>
+      </div>
+      <div class="comic-card">
+        <div class="comic-icon">🚀</div>
+        <div class="comic-title">Rocket Thrust</div>
+        <div class="comic-desc">Hydrogen &amp; Oxygen flame thrust launches spacecraft into orbit.</div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- TAB 6: VISUAL GAS LAB -->
+<div id="tab-lab" class="tab-content">
+  <section class="card c1 s12">
+    <h2>Interactive Gas Testing Laboratory</h2>
+    <p style="font-weight:700">Test unknown evolved gases using visual flame &amp; liquid diagnostic tests!</p>
+  </section>
+
+  <!-- Gas Test 1: Limewater (CO2) -->
+  <section class="card c2 s6">
+    <h2>Bubble Test: Carbon Dioxide (CO₂)</h2>
+    <div class="lab-tube-box">
+      <div class="test-tube-container">
+        <div class="beaker-liquid" id="limewaterLiquid">
+          <div class="cloud-precipitate" id="cloudLayer"></div>
+        </div>
+      </div>
+      <div style="font-weight:900; margin-top:12px">Limewater Solution [Ca(OH)₂]</div>
+    </div>
+    <div style="margin-top:10px; text-align:center">
+      <button class="btn sky" onclick="testGas('co2')">Bubble Gas into Limewater</button>
+      <button class="btn" onclick="resetGas('co2')">Reset</button>
+    </div>
+    <div class="stage-overlay" id="txtCO2" style="position:static; margin-top:8px">Result: Clear liquid</div>
+  </section>
+
+  <!-- Gas Test 2: Squeaky Pop (H2) -->
+  <section class="card c3 s6">
+    <h2>Splint Test: Hydrogen Gas (H₂)</h2>
+    <div class="lab-tube-box">
+      <div class="test-tube-container">
+        <div class="splint-graphic" id="splintH2">
+          <div class="splint-flame" id="flameH2"></div>
+        </div>
+      </div>
+      <div style="font-weight:900; margin-top:12px">Test Tube Mouth &amp; Wooden Splint</div>
+    </div>
+    <div style="margin-top:10px; text-align:center">
+      <button class="btn hot" onclick="testGas('h2')">Bring Lit Splint to Gas</button>
+      <button class="btn" onclick="resetGas('h2')">Reset</button>
+    </div>
+    <div class="stage-overlay" id="txtH2" style="position:static; margin-top:8px">Result: Waiting for ignition</div>
+  </section>
+</div>
+
+<!-- BOTTOM FLOATING PAGER -->
+<div class="pager">
+  <button class="btn" id="pgBack">&larr; Back</button>
+  <span id="pgLabel">1 / 6: Overview</span>
+  <button class="btn go" id="pgNext">Next &rarr;</button>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+
+// TOP TAB NAVIGATION
+(function(){
+  const navBtns = document.querySelectorAll('#topNav .nav-btn');
+  const tabs = document.querySelectorAll('.tab-content');
+  let currentIdx = 0;
+
+  function switchTab(idx){
+    if(idx < 0 || idx >= tabs.length) return;
+    currentIdx = idx;
+    navBtns.forEach((b,i)=>b.classList.toggle('active', i===idx));
+    tabs.forEach((t,i)=>t.classList.toggle('active', i===idx));
+    
+    const label = navBtns[idx].textContent;
+    $('pgLabel').textContent = (idx+1) + ' / ' + tabs.length + ': ' + label.split('. ')[1];
+    $('pgBack').disabled = (idx === 0);
+    $('pgNext').disabled = (idx === tabs.length - 1);
+    window.scrollTo({top:0, behavior:'smooth'});
+
+    // Trigger canvas redraws when switching tabs
+    setTimeout(()=> {
+      if(idx === 1) drawCanvas('decomp', simStep.decomp);
+      if(idx === 2) drawCanvas('carb', simStep.carb);
+      if(idx === 3) drawCanvas('metal', simStep.metal);
+      if(idx === 4) drawCanvas('comb', simStep.comb);
+    }, 50);
+  }
+
+  navBtns.forEach((b,i)=>b.onclick = ()=>switchTab(i));
+  $('pgBack').onclick = ()=>switchTab(currentIdx - 1);
+  $('pgNext').onclick = ()=>switchTab(currentIdx + 1);
+})();
+
+// SIMULATION CANVAS STATE ENGINE
+const simStep = { decomp: 0, carb: 0, metal: 0, comb: 0 };
+
+function resetSim(type){
+  simStep[type] = 0;
+  drawCanvas(type, 0);
+  const txt = $('txt' + type.charAt(0).toUpperCase() + type.slice(1));
+  if(txt) txt.textContent = "Reset complete! Press Stage 1 button.";
+}
+
+function runSim(type, step){
+  simStep[type] = step;
+  drawCanvas(type, step);
+  const txt = $('txt' + type.charAt(0).toUpperCase() + type.slice(1));
+  
+  if(type === 'decomp'){
+    if(step === 1) txt.textContent = "🔥 Step 1: Thermal energy breaks C-O bonds in CaCO₃!";
+    if(step === 2) txt.textContent = "✨ Step 2: Unbonded free atoms float apart.";
+    if(step === 3) txt.textContent = "🔗 Step 3: Products form solid CaO + CO₂ gas bubbles!";
+  } else if(type === 'carb'){
+    if(step === 1) txt.textContent = "🧪 Step 1: Acid & Carbonate reactants mix!";
+    if(step === 2) txt.textContent = "⚡ Step 2: H⁺ protons strip oxygen from carbonate!";
+    if(step === 3) txt.textContent = "🫧 Step 3: Produces liquid H₂O + CO₂ gas fizz!";
+  } else if(type === 'metal'){
+    if(step === 1) txt.textContent = "🧲 Step 1: Mg metal dropped into acid solution!";
+    if(step === 2) txt.textContent = "⚡ Step 2: Mg donates electrons to H⁺ ions!";
+    if(step === 3) txt.textContent = "💥 Step 3: Mg²⁺ dissolves, H₂ gas bubbles form!";
+  } else if(type === 'comb'){
+    if(step === 1) txt.textContent = "✨ Step 1: Spark ruptures CH₄ & O₂ bonds!";
+    if(step === 2) txt.textContent = "💥 Step 2: Rapid oxidation & heat burst!";
+    if(step === 3) txt.textContent = "🔥 Step 3: Assembles CO₂ + 2 H₂O + Flame energy!";
+  }
+}
+
+// GRAPHIC CANVAS DRAWER
+function drawBall(ctx, x, y, r, color, label){
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fillStyle = color;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#000';
+  ctx.stroke();
+
+  ctx.fillStyle = (color === '#38bdf8' || color === '#f59e0b') ? '#000' : '#fff';
+  ctx.font = '900 13px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, x, y);
+}
+
+function drawBondLine(ctx, x1, y1, x2, y2, color='#ffffff', dashed=false){
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = color;
+  if(dashed) ctx.setLineDash([5, 5]);
+  else ctx.setLineDash([]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawCanvas(type, step){
+  const cvId = 'cv' + type.charAt(0).toUpperCase() + type.slice(1);
+  const cv = $(cvId);
+  if(!cv) return;
+  const ctx = cv.getContext('2d');
+
+  cv.width = cv.parentElement.clientWidth || 500;
+  cv.height = cv.parentElement.clientHeight || 280;
+  const w = cv.width, h = cv.height;
+
+  ctx.clearRect(0,0,w,h);
+
+  // Background Grid Lines
+  ctx.strokeStyle = '#1e293b';
+  ctx.lineWidth = 1;
+  for(let x=0; x<w; x+=30){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+  for(let y=0; y<h; y+=30){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+
+  // DECOMPOSITION CANVAS
+  if(type === 'decomp'){
+    if(step === 0 || step === 1){
+      const cx = w*0.5, cy = h*0.5;
+      drawBondLine(ctx, cx, cy, cx-40, cy+30, step===1?'#ef4444':'#fff', step===1);
+      drawBondLine(ctx, cx, cy, cx+40, cy+30, '#fff');
+      drawBondLine(ctx, cx, cy, cx, cy-45, '#fff');
+      drawBondLine(ctx, cx-40, cy+30, cx-80, cy+30, '#fff');
+
+      drawBall(ctx, cx-80, cy+30, 20, '#f59e0b', 'Ca');
+      drawBall(ctx, cx-40, cy+30, 16, '#ef4444', 'O');
+      drawBall(ctx, cx, cy, 18, '#1e293b', 'C');
+      drawBall(ctx, cx+40, cy+30, 16, '#ef4444', 'O');
+      drawBall(ctx, cx, cy-45, 16, '#ef4444', 'O');
+    } else if(step === 2){
+      drawBall(ctx, w*0.2, h*0.6, 20, '#f59e0b', 'Ca');
+      drawBall(ctx, w*0.35, h*0.4, 16, '#ef4444', 'O');
+      drawBall(ctx, w*0.6, h*0.5, 18, '#1e293b', 'C');
+      drawBall(ctx, w*0.75, h*0.3, 16, '#ef4444', 'O');
+      drawBall(ctx, w*0.8, h*0.7, 16, '#ef4444', 'O');
+    } else if(step === 3){
+      // CaO
+      drawBondLine(ctx, w*0.25, h*0.5, w*0.38, h*0.5, '#10b981');
+      drawBall(ctx, w*0.25, h*0.5, 20, '#f59e0b', 'Ca');
+      drawBall(ctx, w*0.38, h*0.5, 16, '#ef4444', 'O');
+
+      // CO2
+      drawBondLine(ctx, w*0.65, h*0.5, w*0.75, h*0.5, '#10b981');
+      drawBondLine(ctx, w*0.75, h*0.5, w*0.85, h*0.5, '#10b981');
+      drawBall(ctx, w*0.65, h*0.5, 16, '#ef4444', 'O');
+      drawBall(ctx, w*0.75, h*0.5, 18, '#1e293b', 'C');
+      drawBall(ctx, w*0.85, h*0.5, 16, '#ef4444', 'O');
+    }
+  }
+
+  // ACID ON CARBONATE CANVAS
+  else if(type === 'carb'){
+    if(step === 0 || step === 1){
+      drawBall(ctx, w*0.2, h*0.4, 14, '#38bdf8', 'H⁺');
+      drawBall(ctx, w*0.2, h*0.65, 18, '#10b981', 'Cl⁻');
+
+      drawBall(ctx, w*0.6, h*0.5, 18, '#1e293b', 'C');
+      drawBall(ctx, w*0.5, h*0.3, 16, '#ef4444', 'O');
+      drawBall(ctx, w*0.7, h*0.3, 16, '#ef4444', 'O');
+      drawBall(ctx, w*0.6, h*0.7, 16, '#ef4444', 'O');
+      drawBondLine(ctx, w*0.6, h*0.5, w*0.5, h*0.3, '#fff');
+      drawBondLine(ctx, w*0.6, h*0.5, w*0.7, h*0.3, '#fff');
+      drawBondLine(ctx, w*0.6, h*0.5, w*0.6, h*0.7, step===1?'#ef4444':'#fff', step===1);
+    } else if(step === 2){
+      drawBall(ctx, w*0.35, h*0.35, 14, '#38bdf8', 'H');
+      drawBall(ctx, w*0.45, h*0.35, 14, '#38bdf8', 'H');
+      drawBall(ctx, w*0.4, h*0.55, 16, '#ef4444', 'O');
+      drawBall(ctx, w*0.75, h*0.5, 18, '#1e293b', 'C');
+      drawBall(ctx, w*0.65, h*0.35, 16, '#ef4444', 'O');
+      drawBall(ctx, w*0.85, h*0.35, 16, '#ef4444', 'O');
+    } else if(step === 3){
+      // H2O
+      drawBondLine(ctx, w*0.25, h*0.5, w*0.2, h*0.65, '#38bdf8');
+      drawBondLine(ctx, w*0.25, h*0.5, w*0.3, h*0.65, '#38bdf8');
+      drawBall(ctx, w*0.25, h*0.5, 16, '#ef4444', 'O');
+      drawBall(ctx, w*0.2, h*0.65, 13, '#38bdf8', 'H');
+      drawBall(ctx, w*0.3, h*0.65, 13, '#38bdf8', 'H');
+
+      // CO2
+      drawBondLine(ctx, w*0.65, h*0.5, w*0.75, h*0.5, '#10b981');
+      drawBondLine(ctx, w*0.75, h*0.5, w*0.85, h*0.5, '#10b981');
+      drawBall(ctx, w*0.65, h*0.5, 16, '#ef4444', 'O');
+      drawBall(ctx, w*0.75, h*0.5, 18, '#1e293b', 'C');
+      drawBall(ctx, w*0.85, h*0.5, 16, '#ef4444', 'O');
+    }
+  }
+
+  // ACID ON METAL CANVAS
+  else if(type === 'metal'){
+    if(step === 0 || step === 1){
+      drawBall(ctx, w*0.25, h*0.4, 14, '#38bdf8', 'H⁺');
+      drawBall(ctx, w*0.25, h*0.65, 14, '#38bdf8', 'H⁺');
+      drawBall(ctx, w*0.7, h*0.5, 22, '#a855f7', 'Mg');
+    } else if(step === 2){
+      drawBall(ctx, w*0.35, h*0.5, 14, '#38bdf8', 'H');
+      drawBall(ctx, w*0.45, h*0.5, 14, '#38bdf8', 'H');
+      drawBall(ctx, w*0.75, h*0.5, 20, '#a855f7', 'Mg²⁺');
+    } else if(step === 3){
+      drawBondLine(ctx, w*0.3, h*0.5, w*0.45, h*0.5, '#38bdf8');
+      drawBall(ctx, w*0.3, h*0.5, 15, '#38bdf8', 'H');
+      drawBall(ctx, w*0.45, h*0.5, 15, '#38bdf8', 'H');
+      drawBall(ctx, w*0.75, h*0.5, 20, '#a855f7', 'Mg²⁺');
+    }
+  }
+
+  // COMBUSTION CANVAS
+  else if(type === 'comb'){
+    if(step === 0 || step === 1){
+      const cx = w*0.3, cy = h*0.5;
+      drawBondLine(ctx, cx, cy, cx-30, cy-30, step===1?'#ef4444':'#fff', step===1);
+      drawBondLine(ctx, cx, cy, cx+30, cy-30, step===1?'#ef4444':'#fff', step===1);
+      drawBondLine(ctx, cx, cy, cx-30, cy+30, step===1?'#ef4444':'#fff', step===1);
+      drawBondLine(ctx, cx, cy, cx+30, cy+30, step===1?'#ef4444':'#fff', step===1);
+
+      drawBall(ctx, cx, cy, 18, '#1e293b', 'C');
+      drawBall(ctx, cx-30, cy-30, 13, '#38bdf8', 'H');
+      drawBall(ctx, cx+30, cy-30, 13, '#38bdf8', 'H');
+      drawBall(ctx, cx-30, cy+30, 13, '#38bdf8', 'H');
+      drawBall(ctx, cx+30, cy+30, 13, '#38bdf8', 'H');
+
+      drawBondLine(ctx, w*0.7, h*0.5, w*0.82, h*0.5, '#ef4444');
+      drawBall(ctx, w*0.7, h*0.5, 16, '#ef4444', 'O');
+      drawBall(ctx, w*0.82, h*0.5, 16, '#ef4444', 'O');
+    } else if(step === 2){
+      drawBall(ctx, w*0.5, h*0.5, 18, '#1e293b', 'C');
+      drawBall(ctx, w*0.2, h*0.3, 13, '#38bdf8', 'H');
+      drawBall(ctx, w*0.3, h*0.7, 13, '#38bdf8', 'H');
+      drawBall(ctx, w*0.7, h*0.3, 13, '#38bdf8', 'H');
+      drawBall(ctx, w*0.8, h*0.7, 13, '#38bdf8', 'H');
+      drawBall(ctx, w*0.35, h*0.4, 16, '#ef4444', 'O');
+      drawBall(ctx, w*0.65, h*0.6, 16, '#ef4444', 'O');
+    } else if(step === 3){
+      // CO2
+      drawBondLine(ctx, w*0.25, h*0.5, w*0.35, h*0.5, '#10b981');
+      drawBondLine(ctx, w*0.35, h*0.5, w*0.45, h*0.5, '#10b981');
+      drawBall(ctx, w*0.25, h*0.5, 16, '#ef4444', 'O');
+      drawBall(ctx, w*0.35, h*0.5, 18, '#1e293b', 'C');
+      drawBall(ctx, w*0.45, h*0.5, 16, '#ef4444', 'O');
+
+      // H2O
+      drawBondLine(ctx, w*0.75, h*0.4, w*0.7, h*0.55, '#38bdf8');
+      drawBondLine(ctx, w*0.75, h*0.4, w*0.8, h*0.55, '#38bdf8');
+      drawBall(ctx, w*0.75, h*0.4, 16, '#ef4444', 'O');
+      drawBall(ctx, w*0.7, h*0.55, 13, '#38bdf8', 'H');
+      drawBall(ctx, w*0.8, h*0.55, 13, '#38bdf8', 'H');
+    }
+  }
+}
+
+// VISUAL GAS TEST LAB
+function testGas(type){
+  if(type === 'co2'){
+    $('cloudLayer').style.opacity = '1';
+    $('limewaterLiquid').style.background = '#ffffff';
+    $('txtCO2').textContent = "Result: Cloudy Milky White Precipitate (CO₂ Confirmed!)";
+  } else if(type === 'h2'){
+    $('flameH2').style.display = 'block';
+    $('splintH2').style.transform = 'translate(-50%, 45px)';
+    $('txtH2').textContent = "Result: Distinctive SQUEAKY POP Sound (H₂ Confirmed!)";
+  }
+}
+
+function resetGas(type){
+  if(type === 'co2'){
+    $('cloudLayer').style.opacity = '0';
+    $('limewaterLiquid').style.background = 'rgba(224,242,254,0.7)';
+    $('txtCO2').textContent = "Result: Clear liquid";
+  } else if(type === 'h2'){
+    $('flameH2').style.display = 'none';
+    $('splintH2').style.transform = 'translate(-50%, 0)';
+    $('txtH2').textContent = "Result: Waiting for ignition";
+  }
+}
+
+// Window resize re-draw canvas
+window.onresize = () => {
+  drawCanvas('decomp', simStep.decomp);
+  drawCanvas('carb', simStep.carb);
+  drawCanvas('metal', simStep.metal);
+  drawCanvas('comb', simStep.comb);
+};
+</script>
+</body>
+</html>
