@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chemical Reaction Simulator — Visualize • Understand • Learn</title>
+<style>
+:root{
+  --blue:#2563eb; --blue-dark:#1e3a8a; --ink:#172033; --muted:#64748b;
+  --line:#dbe4f0; --panel:#ffffff; --bg:#f5f8fc; --green:#16a34a;
+  --orange:#f59e0b; --red:#ef4444; --purple:#8b5cf6;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  color:var(--ink); background:linear-gradient(180deg,#f8fbff 0%,#eef4fb 100%);
+}
+button{font:inherit}
+.app{width:min(1180px,96vw);margin:auto;padding:18px 0 28px}
+header{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:14px}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{width:50px;height:50px;border-radius:16px;background:#e7efff;display:grid;place-items:center;font-size:28px}
+h1{font-size:clamp(22px,3vw,34px);margin:0;color:#173a8a;letter-spacing:-.7px}
+.subtitle{margin:3px 0 0;color:#64748b;font-size:14px}
+.header-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.icon-btn,.tab,.control-btn{
+  border:1px solid var(--line);background:#fff;color:#334155;border-radius:12px;
+  cursor:pointer;transition:.2s;box-shadow:0 2px 7px #1720330b;
+}
+.icon-btn{padding:9px 12px;font-weight:700}
+.icon-btn:hover,.tab:hover,.control-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px #17203314}
+.icon-btn:focus-visible,.tab:focus-visible,.control-btn:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:13px}
+.tab{padding:12px 10px;font-weight:800;font-size:14px}
+.tab.active{background:var(--blue);border-color:var(--blue);color:#fff}
+.steps{
+  background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px 15px;
+  display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-bottom:12px;
+}
+.step{position:relative;text-align:center;color:#64748b;font-size:12px;font-weight:800}
+.step:not(:last-child)::after{
+  content:"";position:absolute;top:15px;left:60%;width:80%;height:2px;background:#dbe4f0;z-index:0
+}
+.step-dot{position:relative;z-index:1;margin:auto;width:30px;height:30px;border-radius:50%;
+  display:grid;place-items:center;background:#eef2f7;border:2px solid #cbd5e1;color:#64748b}
+.step.active .step-dot{background:var(--blue);border-color:var(--blue);color:#fff}
+.step.done .step-dot{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}
+.step-name{margin-top:5px}
+.step-note{font-weight:500;font-size:10px;margin-top:2px}
+.equation{
+  background:#172033;color:#fff;border-radius:14px;padding:11px 16px;text-align:center;
+  margin-bottom:12px;border:1px solid #29354a
+}
+.equation small{display:block;color:#a8bad4;text-transform:uppercase;letter-spacing:1.5px;font-size:10px;font-weight:900;margin-bottom:3px}
+#equationText{font-size:clamp(16px,2.2vw,21px);font-weight:900}
+.workspace{
+  background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden;
+  box-shadow:0 10px 35px #1e3a8a0b
+}
+.lesson-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;
+  border-bottom:1px solid var(--line);background:#fbfdff
+}
+.phase{font-weight:900;color:#1e40af;font-size:15px}
+.phase-description{color:#64748b;font-size:12px}
+.legend{display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:11px;color:#475569}
+.legend-item{display:flex;align-items:center;gap:4px;font-weight:700}
+.atom-key{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:10px;font-weight:900;border:2px solid #fff;box-shadow:0 1px 4px #0002}
+.canvas-wrap{position:relative;background:#f8fbff;min-height:510px}
+svg{display:block;width:100%;height:510px}
+.scene-label{
+  position:absolute;top:12px;padding:7px 12px;border-radius:999px;font-size:12px;font-weight:900;
+  box-shadow:0 3px 10px #17203318;background:#fff;border:1px solid var(--line)
+}
+.scene-label.left{left:14px;color:#1d4ed8}.scene-label.right{right:14px;color:#15803d}
+.stage-caption{
+  position:absolute;left:50%;top:14px;transform:translateX(-50%);
+  background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:6px 12px;border-radius:999px;
+  font-weight:900;font-size:12px;white-space:nowrap
+}
+.observation{
+  position:absolute;left:50%;bottom:13px;transform:translateX(-50%);
+  width:min(92%,700px);background:#ffffffee;backdrop-filter:blur(4px);
+  border:1px solid #dbeafe;border-radius:12px;padding:9px 13px;text-align:center;
+  color:#334155;font-size:13px;font-weight:700;box-shadow:0 4px 16px #17203312
+}
+.controls{
+  display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:12px;border-top:1px solid var(--line);background:#fbfdff
+}
+.control-btn{padding:9px 14px;font-weight:800}
+.control-btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}
+.control-btn.play{background:#16a34a;border-color:#16a34a;color:#fff;min-width:120px}
+.control-btn:disabled{opacity:.45;cursor:not-allowed;transform:none;box-shadow:none}
+.speed{
+  display:flex;align-items:center;gap:6px;border-left:1px solid var(--line);padding-left:10px;
+  color:#64748b;font-size:12px;font-weight:800
+}
+.speed select{border:1px solid var(--line);border-radius:8px;padding:6px;background:#fff}
+.info-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:12px;margin-top:12px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:15px}
+.card h2{font-size:15px;margin:0 0 8px;color:#1e3a8a}
+.card p{margin:5px 0;color:#475569;line-height:1.5;font-size:13px}
+.takeaway{margin-top:10px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:10px}
+.takeaway strong{color:#1d4ed8}
+.checks{list-style:none;padding:0;margin:8px 0 0}
+.checks li{margin:8px 0;font-size:13px;color:#475569}
+.checks li::before{content:"✓";display:inline-grid;place-items:center;width:19px;height:19px;border-radius:50%;
+  background:#dcfce7;color:#15803d;font-weight:900;margin-right:7px}
+.atom-count{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:9px
+}
+.count-pill{border:1px solid var(--line);border-radius:9px;padding:6px;text-align:center;font-size:11px;background:#fafcff}
+.count-pill b{display:block;font-size:14px}
+@media(max-width:800px){
+  .tabs{grid-template-columns:repeat(2,1fr)}
+  .info-grid{grid-template-columns:1fr}
+  .header-actions{display:none}
+  .canvas-wrap,svg{min-height:430px;height:430px}
+  .steps{padding:10px 5px}.step-note{display:none}.step-name{font-size:10px}
+}
+@media(max-width:560px){
+  .app{width:100%;padding:10px}
+  .tabs{gap:6px}.tab{padding:10px 5px;font-size:12px}
+  .canvas-wrap,svg{min-height:380px;height:380px}
+  .legend{display:none}
+  .scene-label{font-size:10px;padding:5px 8px}
+  .observation{font-size:11px}
+}
+/* SVG atom/bond styling */
+.atom-node{transition:transform 1.15s cubic-bezier(.22,.8,.25,1),opacity .45s ease}
+.atom-circle{stroke:#fff;stroke-width:3;filter:drop-shadow(0 3px 3px #17203325)}
+.atom-text{font-weight:900;fill:#fff;text-anchor:middle;dominant-baseline:middle;pointer-events:none;font-size:13px}
+.bond{stroke:#64748b;stroke-width:5;stroke-linecap:round;transition:opacity .55s ease, x1 1.15s, y1 1.15s, x2 1.15s, y2 1.15s}
+.bond.double{stroke-width:3}
+.bond.breaking{stroke:#ef4444;stroke-dasharray:8 7;animation:dash .45s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-15}}
+@keyframes pulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+.energy-ring{fill:none;stroke:#f59e0b;stroke-width:4;opacity:0;transform-origin:400px 250px;animation:ring 1.5s ease-out infinite}
+@keyframes ring{0%{r:25;opacity:.75}100%{r:120;opacity:0}}
+.gas-bubble{fill:#dbeafe;stroke:#60a5fa;stroke-width:2;opacity:.8;animation:float 2.8s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-18px)}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand">
+    <div class="logo">🧪</div>
+    <div><h1>Chemical Reaction Simulator</h1><p class="subtitle">Visualize • Understand • Learn how atoms rearrange</p></div>
+  </div>
+  <div class="header-actions">
+    <button class="icon-btn" id="resetTop">↻ Reset</button>
+    <button class="icon-btn" id="helpBtn">? Help</button>
+  </div>
+</header>
+
+<nav class="tabs" aria-label="Reaction choices">
+  <button class="tab active" data-reaction="acid-carbonate">🧪 Acid + Carbonate</button>
+  <button class="tab" data-reaction="acid-metal">⚗️ Acid + Metal</button>
+  <button class="tab" data-reaction="decomposition">🔥 Decomposition</button>
+  <button class="tab" data-reaction="combustion">💥 Combustion</button>
+</nav>
+
+<div class="steps" id="steps"></div>
+
+<div class="equation">
+  <small>Balanced chemical equation</small>
+  <div id="equationText"></div>
+</div>
+
+<section class="workspace">
+  <div class="lesson-bar">
+    <div>
+      <div class="phase" id="phase"></div>
+      <div class="phase-description" id="phaseDescription"></div>
+    </div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="canvas-wrap">
+    <div class="scene-label left" id="reactantLabel">REACTANTS</div>
+    <div class="stage-caption" id="stageCaption"></div>
+    <div class="scene-label right" id="productLabel">PRODUCTS</div>
+    <svg id="svg" viewBox="0 0 800 500" role="img" aria-label="Animated particle model of a chemical reaction">
+      <defs>
+        <radialGradient id="sceneBg"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#eef5ff"/></radialGradient>
+        <filter id="softShadow"><feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity=".15"/></filter>
+      </defs>
+      <rect x="0" y="0" width="800" height="500" rx="20" fill="url(#sceneBg)"/>
+      <g id="bondLayer"></g>
+      <g id="atomLayer"></g>
+      <g id="effectLayer"></g>
+    </svg>
+    <div class="observation" id="observation"></div>
+  </div>
+
+  <div class="controls">
+    <button class="control-btn" id="first">⏮ First</button>
+    <button class="control-btn" id="prev">◀ Previous</button>
+    <button class="control-btn play" id="play">▶ Play</button>
+    <button class="control-btn" id="next">Next ▶</button>
+    <button class="control-btn" id="last">Last ⏭</button>
+    <div class="speed">Speed
+      <select id="speed">
+        <option value="5200">Slow</option>
+        <option value="4000" selected>Normal</option>
+        <option value="2800">Fast</option>
+      </select>
+    </div>
+  </div>
+</section>
+
+<div class="info-grid">
+  <article class="card">
+    <h2>💡 What's happening?</h2>
+    <p id="explanation"></p>
+    <div class="takeaway"><strong>Key idea:</strong> Chemical reactions rearrange atoms into new combinations. The atoms themselves are not created or destroyed.</div>
+    <div class="atom-count" id="atomCount"></div>
+  </article>
+  <article class="card">
+    <h2>🔎 About this reaction</h2>
+    <p id="reactionType"></p>
+    <ul class="checks" id="facts"></ul>
+  </article>
+</div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+const NS="http://www.w3.org/2000/svg";
+const COLORS={H:"#e2e8f0",C:"#111827",O:"#ef4444",Na:"#8b5cf6",Cl:"#22c55e",Zn:"#64748b"};
+const TEXT={H:"#111827",C:"#fff",O:"#fff",Na:"#fff",Cl:"#fff",Zn:"#fff"};
+
+const STEP_META=[
+  ["Reactants","Atoms are separated and stable."],
+  ["Collision","Particles move closer and interact."],
+  ["Bond Breaking","Old bonds break; atoms remain present."],
+  ["Rearrangement","Atoms move into new positions."],
+  ["New Bonds","New combinations become visible."],
+  ["Products","New substances are complete."]
+];
+
+function a(id,el,x,y,group="") { return {id,el,x,y,group}; }
+function b(from,to,order=1,state="normal") { return {from,to,order,state}; }
+
+const reactions={
+"acid-carbonate":{
+  name:"Acid + Carbonate",
+  equation:"CH₃COOH + NaHCO₃ → CH₃COONa + H₂O + CO₂↑",
+  type:"Acid–carbonate reaction",
+  facts:["Carbon dioxide gas is released.","Water is formed.","Sodium acetate remains as a product.","Fizzing happens because CO₂ escapes."],
+  reactantLabel:"Vinegar + Baking Soda",
+  productLabel:"Sodium Acetate + Water + CO₂",
+  steps:[
+   {caption:"1 • REACTANTS",desc:"Vinegar (acetic acid) and sodium bicarbonate are present.",explain:"The atoms are arranged in the reactant molecules. Nothing has reacted yet.",
+    atoms:[
+     a("Cac","C",170,225,"acetate"),a("Ha1","H",125,185,"acetate"),a("Ha2","H",125,265,"acetate"),a("Ha3","H",170,310,"acetate"),a("Oa","O",220,225,"acetate"),a("Hac","H",260,225,"acetate"),
+     a("Na","Na",575,215,"bicarb"),a("Hb","H",575,295,"bicarb"),a("Cb","C",625,255,"bicarb"),a("Ob1","O",625,190,"bicarb"),a("Ob2","O",690,255,"bicarb"),a("Ob3","O",625,320,"bicarb")
+    ],
+    bonds:[b("Cac","Ha1"),b("Cac","Ha2"),b("Cac","Ha3"),b("Cac","Oa"),b("Oa","Hac"),b("Cb","Ob1"),b("Cb","Ob2"),b("Cb","Ob3"),b("Ob3","Hb"),b("Na","Ob3")]
+   },
+   {caption:"2 • COLLISION",desc:"The reactant particles approach one another.",explain:"The particles collide. A collision can allow old bonds to change and new bonds to form.",
+    atoms:[
+     a("Cac","C",275,235,"acetate"),a("Ha1","H",235,195,"acetate"),a("Ha2","H",235,275,"acetate"),a("Ha3","H",275,320,"acetate"),a("Oa","O",325,235,"acetate"),a("Hac","H",365,235,"acetate"),
+     a("Na","Na",470,225,"bicarb"),a("Hb","H",470,305,"bicarb"),a("Cb","C",520,265,"bicarb"),a("Ob1","O",520,200,"bicarb"),a("Ob2","O",585,265,"bicarb"),a("Ob3","O",520,330,"bicarb")
+    ],
+    bonds:[b("Cac","Ha1"),b("Cac","Ha2"),b("Cac","Ha3"),b("Cac","Oa"),b("Oa","Hac"),b("Cb","Ob1"),b("Cb","Ob2"),b("Cb","Ob3"),b("Ob3","Hb"),b("Na","Ob3")]
+   },
+   {caption:"3 • BONDS BREAK",desc:"Some old connections are broken.",explain:"The atoms are not disappearing. Only selected connections between atoms are changing.",
+    atoms:[
+     a("Cac","C",275,235,"acetate"),a("Ha1","H",225,190,"acetate"),a("Ha2","H",225,280,"acetate"),a("Ha3","H",275,325,"acetate"),a("Oa","O",325,235,"acetate"),a("Hac","H",365,235,"acetate"),
+     a("Na","Na",485,230,"bicarb"),a("Hb","H",450,315,"bicarb"),a("Cb","C",535,265,"bicarb"),a("Ob1","O",535,195,"bicarb"),a("Ob2","O",605,265,"bicarb"),a("Ob3","O",535,335,"bicarb")
+    ],
+    bonds:[b("Cac","Ha1"),b("Cac","Ha2"),b("Cac","Ha3"),b("Cac","Oa"),b("Cb","Ob1"),b("Cb","Ob2"),b("Na","Ob3"),b("Ob3","Hb"),b("Oa","Hac",1,"breaking"),b("Cb","Ob3",1,"breaking")]
+   },
+   {caption:"4 • REARRANGE",desc:"Atoms move toward their new partners.",explain:"The atoms are being rearranged. Notice that every atom from the reactants is still represented.",
+    atoms:[
+     a("Cac","C",585,245,"acetate"),a("Ha1","H",535,205,"acetate"),a("Ha2","H",535,285,"acetate"),a("Ha3","H",585,310,"acetate"),a("Oa","O",635,245,"acetate"),a("Hac","H",690,245,"acetate"),
+     a("Na","Na",230,330,"acetate"),a("Hb","H",385,385,"water"),a("Cb","C",385,110,"gas"),a("Ob1","O",335,110,"gas"),a("Ob2","O",435,110,"gas"),a("Ob3","O",385,175,"water")
+    ],
+    bonds:[b("Cac","Ha1"),b("Cac","Ha2"),b("Cac","Ha3"),b("Cac","Oa"),b("Oa","Hac"),b("Cb","Ob1"),b("Cb","Ob2")]
+   },
+   {caption:"5 • NEW BONDS",desc:"New molecules become recognizable.",explain:"Hydrogen and oxygen form water. Carbon and oxygen form carbon dioxide. Sodium joins the acetate group.",
+    atoms:[
+     a("Cac","C",590,260,"acetate"),a("Ha1","H",540,220,"acetate"),a("Ha2","H",540,300,"acetate"),a("Ha3","H",590,325,"acetate"),a("Oa","O",640,260,"acetate"),a("Hac","H",690,260,"acetate"),
+     a("Na","Na",500,390,"acetate"),a("Hb","H",245,390,"water"),a("Cb","C",385,115,"gas"),a("Ob1","O",320,115,"gas"),a("Ob2","O",450,115,"gas"),a("Ob3","O",245,330,"water")
+    ],
+    bonds:[b("Cac","Ha1"),b("Cac","Ha2"),b("Cac","Ha3"),b("Cac","Oa"),b("Oa","Hac"),b("Na","Oa"),b("Cb","Ob1",2),b("Cb","Ob2",2),b("Hb","Ob3")]
+   },
+   {caption:"6 • PRODUCTS",desc:"Three products are now visible.",explain:"The final substances are sodium acetate, water, and carbon dioxide. CO₂ is a gas, so it can escape as bubbles.",
+    atoms:[
+     a("Cac","C",585,300,"acetate"),a("Ha1","H",535,260,"acetate"),a("Ha2","H",535,340,"acetate"),a("Ha3","H",585,365,"acetate"),a("Oa","O",635,300,"acetate"),a("Hac","H",685,300,"acetate"),a("Na","Na",485,405,"acetate"),
+     a("Hb","H",235,410,"water"),a("Ob3","O",275,370,"water"),a("Cb","C",400,95,"gas"),a("Ob1","O",345,95,"gas"),a("Ob2","O",455,95,"gas")
+    ],
+    bonds:[b("Cac","Ha1"),b("Cac","Ha2"),b("Cac","Ha3"),b("Cac","Oa"),b("Oa","Hac"),b("Na","Oa"),b("Hb","Ob3"),b("Cb","Ob1",2),b("Cb","Ob2",2)],
+    gas:true
+   }
+  ]
+},
+"acid-metal":{
+ name:"Acid + Metal",equation:"Zn + 2HCl → ZnCl₂ + H₂↑",type:"Single-replacement reaction",
+ facts:["Zinc replaces hydrogen in hydrochloric acid.","Hydrogen gas is released.","Zinc chloride is produced.","Bubbles represent H₂ gas escaping."],
+ reactantLabel:"Zinc + Hydrochloric Acid",productLabel:"Zinc Chloride + H₂",
+ steps:metalSteps()
+},
+"decomposition":{
+ name:"Decomposition",equation:"2NaHCO₃ → Na₂CO₃ + H₂O + CO₂↑",type:"Decomposition reaction",
+ facts:["Heat provides energy.","One reactant breaks into several products.","Water and carbon dioxide are produced.","CO₂ is released as a gas."],
+ reactantLabel:"Sodium Bicarbonate",productLabel:"Sodium Carbonate + H₂O + CO₂",
+ steps:decompSteps()
+},
+"combustion":{
+ name:"Combustion",equation:"CH₄ + 2O₂ → CO₂ + 2H₂O + energy",type:"Combustion reaction",
+ facts:["Methane reacts with oxygen.","New C–O and O–H bonds form.","Energy is released as heat and light.","CO₂ and water are products."],
+ reactantLabel:"Methane + Oxygen",productLabel:"CO₂ + H₂O + Energy",
+ steps:combustionSteps()
+}
+};
+
+function metalSteps(){
+ const common=(zn,h1,h2,c1,c2,bonds)=>({atoms:[a("Zn","Zn",...zn),a("H1","H",...h1),a("Cl1","Cl",...c1),a("H2","H",...h2),a("Cl2","Cl",...c2)],bonds});
+ return [
+  {caption:"1 • REACTANTS",desc:"Zinc metal and two HCl molecules are present.",explain:"The reactants have their original bonds.",...common([200,250],[500,190],[540,220],[500,310],[540,340],[b("H1","Cl1"),b("H2","Cl2")])},
+  {caption:"2 • COLLISION",desc:"Hydrochloric acid molecules move toward zinc.",explain:"The particles collide, allowing the reaction to begin.",...common([350,250],[430,190],[470,220],[430,310],[470,340],[b("H1","Cl1"),b("H2","Cl2")])},
+  {caption:"3 • BONDS BREAK",desc:"H–Cl bonds are broken.",explain:"The hydrogen atoms separate from chlorine. The atoms remain present.",...common([350,260],[390,170],[450,280],[390,350],[300,300],[])},
+  {caption:"4 • REARRANGE",desc:"Zinc bonds with chlorine while hydrogen atoms approach each other.",explain:"Atoms find new partners: Zn moves toward Cl, while H atoms move together.",...common([350,330],[390,130],[300,330],[390,210],[390,380],[])},
+  {caption:"5 • NEW BONDS",desc:"ZnCl₂ and H₂ become visible.",explain:"New Zn–Cl and H–H bonds form. These are different substances from the reactants.",...common([350,330],[390,120],[300,330],[430,120],[390,380],[b("Zn","Cl1"),b("Zn","Cl2"),b("H1","H2")])},
+  {caption:"6 • PRODUCTS",desc:"Hydrogen gas separates and rises.",explain:"Zinc chloride remains while H₂ gas escapes as bubbles.",...common([350,350],[390,75],[300,350],[430,75],[390,405],[b("Zn","Cl1"),b("Zn","Cl2"),b("H1","H2")]),gas:true}
+ ];
+}
+function decompSteps(){
+ return [
+  {caption:"1 • REACTANT",desc:"Sodium bicarbonate is present.",explain:"The reactant contains Na, H, C and O atoms.",atoms:[a("Na1","Na",310,250),a("H","H",380,190),a("C","C",430,250),a("O1","O",480,205),a("O2","O",480,295),a("O3","O",365,300)],bonds:[b("C","O1"),b("C","O2"),b("C","O3"),b("O3","Na1"),b("O1","H")]},
+  {caption:"2 • HEAT",desc:"Heat energy enters the reactant.",explain:"Heating increases the energy of the particles and allows the compound to decompose.",heat:true,atoms:[a("Na1","Na",310,250),a("H","H",380,190),a("C","C",430,250),a("O1","O",480,205),a("O2","O",480,295),a("O3","O",365,300)],bonds:[b("C","O1"),b("C","O2"),b("C","O3"),b("O3","Na1"),b("O1","H")]},
+  {caption:"3 • BONDS BREAK",desc:"Old connections begin to break.",explain:"The compound separates into groups of atoms that will become new products.",heat:true,atoms:[a("Na1","Na",310,260),a("H","H",390,180),a("C","C",430,250),a("O1","O",490,200),a("O2","O",490,300),a("O3","O",350,310)],bonds:[b("C","O1"),b("C","O2"),b("C","O3",1,"breaking"),b("O3","Na1",1,"breaking"),b("O1","H",1,"breaking")]},
+  {caption:"4 • REARRANGE",desc:"Product groups separate.",explain:"Atoms move into arrangements that correspond to sodium carbonate, water, and carbon dioxide.",atoms:[a("Na1","Na",210,350),a("H","H",250,400),a("C","C",500,120),a("O1","O",445,95),a("O2","O",555,95),a("O3","O",330,400)],bonds:[]},
+  {caption:"5 • NEW BONDS",desc:"New products become recognizable.",explain:"New connections form within each product group.",atoms:[a("Na1","Na",220,350),a("H","H",270,390),a("C","C",500,120),a("O1","O",445,95),a("O2","O",555,95),a("O3","O",330,390)],bonds:[b("C","O1"),b("C","O2"),b("C","Na1"),b("H","O3")]},
+  {caption:"6 • PRODUCTS",desc:"CO₂ escapes as a gas.",explain:"The products are sodium carbonate, water, and carbon dioxide.",atoms:[a("Na1","Na",220,350),a("H","H",270,390),a("C","C",500,90),a("O1","O",445,65),a("O2","O",555,65),a("O3","O",330,390)],bonds:[b("C","O1",2),b("C","O2",2),b("H","O3")],gas:true}
+ ];
+}
+function combustionSteps(){
+ return [
+  {caption:"1 • REACTANTS",desc:"Methane and oxygen are present.",explain:"Methane contains carbon and hydrogen. Oxygen molecules contain oxygen atoms.",atoms:[a("C","C",220,250),a("H1","H",170,200),a("H2","H",270,200),a("H3","H",170,300),a("H4","H",270,300),a("O1","O",560,200),a("O2","O",610,200),a("O3","O",560,320),a("O4","O",610,320)],bonds:[b("C","H1"),b("C","H2"),b("C","H3"),b("C","H4"),b("O1","O2",2),b("O3","O4",2)]},
+  {caption:"2 • COLLISION",desc:"Methane and oxygen move together.",explain:"The particles collide, providing an opportunity for bonds to change.",atoms:[a("C","C",330,250),a("H1","H",280,200),a("H2","H",380,200),a("H3","H",280,300),a("H4","H",380,300),a("O1","O",480,210),a("O2","O",530,210),a("O3","O",480,310),a("O4","O",530,310)],bonds:[b("C","H1"),b("C","H2"),b("C","H3"),b("C","H4"),b("O1","O2"),b("O3","O4")]},
+  {caption:"3 • BONDS BREAK",desc:"Reactant bonds break.",explain:"The old C–H and O–O connections are no longer the final arrangement.",atoms:[a("C","C",390,250),a("H1","H",300,170),a("H2","H",460,170),a("H3","H",300,330),a("H4","H",460,330),a("O1","O",520,160),a("O2","O",570,250),a("O3","O",330,390),a("O4","O",570,350)],bonds:[b("C","H1",1,"breaking"),b("C","H2",1,"breaking"),b("C","H3",1,"breaking"),b("C","H4",1,"breaking"),b("O1","O2",2,"breaking"),b("O3","O4",2,"breaking")]},
+  {caption:"4 • REARRANGE",desc:"Carbon and hydrogen move toward oxygen.",explain:"Atoms rearrange into the structures of carbon dioxide and water.",atoms:[a("C","C",400,130),a("H1","H",210,370),a("H2","H",245,345),a("H3","H",555,370),a("H4","H",590,345),a("O1","O",355,130),a("O2","O",445,130),a("O3","O",230,410),a("O4","O",570,410)],bonds:[]},
+  {caption:"5 • NEW BONDS",desc:"CO₂ and H₂O bonds form.",explain:"Carbon forms bonds with oxygen, and hydrogen forms bonds with oxygen.",atoms:[a("C","C",400,110),a("H1","H",205,370),a("H2","H",235,345),a("H3","H",565,370),a("H4","H",595,345),a("O1","O",350,110),a("O2","O",450,110),a("O3","O",220,400),a("O4","O",580,400)],bonds:[b("C","O1",2),b("C","O2",2),b("H1","O3"),b("H2","O3"),b("H3","O4"),b("H4","O4")]},
+  {caption:"6 • PRODUCTS",desc:"Products and released energy are visible.",explain:"Carbon dioxide and water are formed. Combustion releases energy as heat and light.",atoms:[a("C","C",400,90),a("H1","H",205,385),a("H2","H",235,360),a("H3","H",565,385),a("H4","H",595,360),a("O1","O",350,90),a("O2","O",450,90),a("O3","O",220,415),a("O4","O",580,415)],bonds:[b("C","O1",2),b("C","O2",2),b("H1","O3"),b("H2","O3"),b("H3","O4"),b("H4","O4")],energy:true}
+ ];
+}
+
+let reactionKey="acid-carbonate", stepIndex=0, playing=false, timer=null;
+const svg=document.getElementById("svg"), atomLayer=document.getElementById("atomLayer"), bondLayer=document.getElementById("bondLayer"), effectLayer=document.getElementById("effectLayer");
+const atomNodes=new Map(), bondNodes=new Map();
+
+function current(){return reactions[reactionKey].steps[stepIndex]}
+function renderSteps(){
+ const box=document.getElementById("steps"); box.innerHTML="";
+ STEP_META.forEach((m,i)=>{
+  const el=document.createElement("div"); el.className="step";
+  if(i<stepIndex) el.classList.add("done"); if(i===stepIndex) el.classList.add("active");
+  el.innerHTML=`<div class="step-dot">${i+1}</div><div class="step-name">${m[0]}</div><div class="step-note">${m[1]}</div>`;
+  box.appendChild(el);
+ });
+}
+function updateUI(){
+ const r=reactions[reactionKey], s=current();
+ document.getElementById("equationText").textContent=r.equation;
+ document.getElementById("phase").textContent=s.caption.split(" • ")[1]||s.caption;
+ document.getElementById("phaseDescription").textContent=s.desc;
+ document.getElementById("stageCaption").textContent=s.caption;
+ document.getElementById("observation").textContent=s.explain;
+ document.getElementById("explanation").textContent=s.explain;
+ document.getElementById("reactionType").textContent=`${r.type}. ${r.equation}`;
+ document.getElementById("reactantLabel").textContent=r.reactantLabel;
+ document.getElementById("productLabel").textContent=r.productLabel;
+ document.getElementById("facts").innerHTML=r.facts.map(x=>`<li>${x}</li>`).join("");
+ document.getElementById("prev").disabled=stepIndex===0;
+ document.getElementById("first").disabled=stepIndex===0;
+ document.getElementById("next").disabled=stepIndex===r.steps.length-1;
+ document.getElementById("last").disabled=stepIndex===r.steps.length-1;
+ renderSteps(); renderLegend(); renderCounts(); renderScene();
+}
+function renderLegend(){
+ const els=[...new Set(current().atoms.map(x=>x.el))];
+ document.getElementById("legend").innerHTML=els.map(el=>`<span class="legend-item"><span class="atom-key" style="background:${COLORS[el]}">${el}</span>${fullName(el)}</span>`).join("");
+}
+function fullName(e){return ({H:"Hydrogen",C:"Carbon",O:"Oxygen",Na:"Sodium",Cl:"Chlorine",Zn:"Zinc"})[e]||e}
+function renderCounts(){
+ const counts={}; current().atoms.forEach(x=>counts[x.el]=(counts[x.el]||0)+1);
+ document.getElementById("atomCount").innerHTML=Object.entries(counts).map(([k,v])=>`<div class="count-pill"><b>${v}</b>${fullName(k)}</div>`).join("");
+}
+function svgEl(tag){return document.createElementNS(NS,tag)}
+function ensureAtom(id){
+ if(atomNodes.has(id)) return atomNodes.get(id);
+ const g=svgEl("g"); g.classList.add("atom-node");
+ const c=svgEl("circle"); c.classList.add("atom-circle");
+ const t=svgEl("text"); t.classList.add("atom-text");
+ g.append(c,t); atomLayer.appendChild(g); atomNodes.set(id,g); return g;
+}
+function ensureBond(key){
+ if(bondNodes.has(key)) return bondNodes.get(key);
+ const line=svgEl("line"); line.classList.add("bond"); bondLayer.appendChild(line); bondNodes.set(key,line); return line;
+}
+function renderScene(){
+ const s=current(), atomMap=new Map(s.atoms.map(x=>[x.id,x]));
+ // atoms
+ const visibleIds=new Set(s.atoms.map(x=>x.id));
+ s.atoms.forEach(a=>{
+  const g=ensureAtom(a.id), c=g.children[0], t=g.children[1];
+  g.style.transform=`translate(${a.x}px,${a.y}px)`;
+  g.style.opacity="1";
+  c.setAttribute("r",a.el==="Na"||a.el==="Cl"||a.el==="Zn"?22:20);
+  c.setAttribute("fill",COLORS[a.el]);
+  t.setAttribute("fill",TEXT[a.el]);
+  t.textContent=a.el;
+ });
+ atomNodes.forEach((g,id)=>{if(!visibleIds.has(id))g.style.opacity="0";});
+ // bonds
+ const wanted=new Set();
+ s.bonds.forEach((bd,i)=>{
+  const from=atomMap.get(bd.from),to=atomMap.get(bd.to); if(!from||!to)return;
+  const key=`${bd.from}-${bd.to}-${i}`; wanted.add(key);
+  const line=ensureBond(key);
+  line.setAttribute("x1",from.x);line.setAttribute("y1",from.y);line.setAttribute("x2",to.x);line.setAttribute("y2",to.y);
+  line.classList.toggle("double",bd.order===2); line.classList.toggle("breaking",bd.state==="breaking");
+  line.style.opacity="1";
+ });
+ bondNodes.forEach((line,key)=>{if(!wanted.has(key))line.style.opacity="0"});
+ // effects
+ effectLayer.innerHTML="";
+ if(s.gas){
+   const g=svgEl("g");
+   for(let i=0;i<5;i++){
+     const c=svgEl("circle");c.classList.add("gas-bubble");
+     c.setAttribute("cx",315+i*42);c.setAttribute("cy",450-i*22);c.setAttribute("r",7+i%3*3);
+     c.style.animationDelay=`${i*.28}s`;g.appendChild(c);
+   }
+   effectLayer.appendChild(g);
+ }
+ if(s.heat){
+   const text=svgEl("text");text.setAttribute("x","400");text.setAttribute("y","455");text.setAttribute("text-anchor","middle");
+   text.setAttribute("font-size","28");text.setAttribute("font-weight","900");text.setAttribute("fill","#b45309");text.textContent="🔥 HEAT ENERGY";
+   effectLayer.appendChild(text);
+ }
+ if(s.energy){
+   for(let i=0;i<3;i++){const ring=svgEl("circle");ring.classList.add("energy-ring");ring.style.animationDelay=`${i*.35}s`;effectLayer.appendChild(ring)}
+   const text=svgEl("text");text.setAttribute("x","400");text.setAttribute("y","460");text.setAttribute("text-anchor","middle");text.setAttribute("font-size","22");text.setAttribute("font-weight","900");text.setAttribute("fill","#b45309");text.textContent="✨ ENERGY RELEASED";effectLayer.appendChild(text);
+ }
+}
+function setStep(n){
+ stepIndex=Math.max(0,Math.min(n,reactions[reactionKey].steps.length-1));
+ updateUI();
+}
+function stop(){playing=false;clearInterval(timer);timer=null;document.getElementById("play").textContent="▶ Play"}
+function start(){
+ if(stepIndex>=5)setStep(0);
+ playing=true;document.getElementById("play").textContent="⏸ Pause";
+ timer=setInterval(()=>{
+  if(stepIndex>=reactions[reactionKey].steps.length-1){stop();return}
+  setStep(stepIndex+1);
+ },Number(document.getElementById("speed").value));
+}
+document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{
+ stop();document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));btn.classList.add("active");
+ reactionKey=btn.dataset.reaction;stepIndex=0;updateUI();
+}));
+document.getElementById("play").addEventListener("click",()=>playing?stop():start());
+document.getElementById("first").addEventListener("click",()=>{stop();setStep(0)});
+document.getElementById("prev").addEventListener("click",()=>{stop();setStep(stepIndex-1)});
+document.getElementById("next").addEventListener("click",()=>{stop();setStep(stepIndex+1)});
+document.getElementById("last").addEventListener("click",()=>{stop();setStep(5)});
+document.getElementById("resetTop").addEventListener("click",()=>{stop();setStep(0)});
+document.getElementById("helpBtn").addEventListener("click",()=>{
+ alert("How to use the simulator:\\n\\n1. Choose a reaction.\\n2. Press Next to examine one stage at a time.\\n3. Use Play only after learners understand the stages.\\n4. Watch the labels: atoms stay present while bonds change.\\n5. At the Products stage, identify what is new and what gas is released.");
+});
+document.getElementById("speed").addEventListener("change",()=>{if(playing){stop();start()}});
+updateUI();
+})();
+</script>
+</body>
+</html>
